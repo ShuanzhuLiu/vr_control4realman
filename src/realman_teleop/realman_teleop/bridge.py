@@ -114,6 +114,16 @@ def summarize_input_continuity(arrival_times, position_steps, rotation_steps):
     )
 
 
+def requested_hold_mode(position_pressed: bool, orientation_pressed: bool):
+    if position_pressed and orientation_pressed:
+        return "combined"
+    if position_pressed:
+        return "position"
+    if orientation_pressed:
+        return "orientation"
+    return None
+
+
 @dataclass
 class ArmRuntime:
     name: str
@@ -724,21 +734,43 @@ class RealmanDualArmBridge(Node):
                 return
             setattr(runtime, field_name, pressed)
             conflict = runtime.position_pressed and runtime.orientation_pressed
+            requested_mode = requested_hold_mode(
+                runtime.position_pressed,
+                runtime.orientation_pressed,
+            )
             active_mode = runtime.active_mode
             pending_mode = runtime.pending_mode
             enabled = runtime.enabled
             enable_pending = runtime.enable_pending
+            if self.trigger_mode == "hold" and enable_pending:
+                runtime.pending_mode = requested_mode
+
+        if self.trigger_mode == "hold":
+            if enable_pending:
+                if requested_mode is None:
+                    self._request_trigger_disable(
+                        runtime,
+                        f"{control_mode} button released",
+                    )
+                return
+            if requested_mode is None:
+                if enabled:
+                    self._request_trigger_disable(
+                        runtime,
+                        f"{control_mode} button released",
+                    )
+                return
+            if not enabled:
+                self._request_trigger_enable(runtime, requested_mode)
+            elif active_mode != requested_mode:
+                self._request_trigger_mode_switch(runtime, requested_mode)
+            return
 
         if conflict:
             self._request_trigger_disable(runtime, "position/orientation conflict")
             return
 
-        if self.trigger_mode == "hold":
-            if pressed:
-                self._request_trigger_enable(runtime, control_mode)
-            else:
-                self._request_trigger_disable(runtime, f"{control_mode} button released")
-        elif pressed:
+        if pressed:
             if enabled and active_mode == control_mode:
                 self._request_trigger_disable(runtime, f"{control_mode} toggled off")
             else:
@@ -777,10 +809,17 @@ class RealmanDualArmBridge(Node):
     ) -> None:
         with runtime.state_lock:
             enable_pending = runtime.enable_pending
-            button_pressed = getattr(runtime, f"{control_mode}_pressed")
+            if self.trigger_mode == "hold":
+                selected_mode = requested_hold_mode(
+                    runtime.position_pressed,
+                    runtime.orientation_pressed,
+                )
+                runtime.pending_mode = selected_mode
+            else:
+                selected_mode = control_mode
         if not enable_pending:
             return
-        if self.trigger_mode == "hold" and not button_pressed:
+        if selected_mode is None:
             with runtime.state_lock:
                 runtime.enable_pending = False
                 runtime.pending_mode = None
@@ -795,10 +834,44 @@ class RealmanDualArmBridge(Node):
         with runtime.state_lock:
             runtime.enable_pending = False
             runtime.pending_mode = None
-        enabled, enable_message = self._enable_runtime(runtime, control_mode)
+        enabled, enable_message = self._enable_runtime(runtime, selected_mode)
         if not enabled:
             self.get_logger().error(f"{runtime.name} trigger enable failed: {enable_message}")
             self._request_converter(runtime.name, False)
+
+    def _request_trigger_mode_switch(
+        self, runtime: ArmRuntime, control_mode: str
+    ) -> None:
+        with runtime.state_lock:
+            if not runtime.enabled or runtime.active_mode == control_mode:
+                return
+            previous_mode = runtime.active_mode
+        reason = f"control mode {previous_mode}->{control_mode}"
+        self._disable_arm(
+            runtime,
+            reason,
+            stop=True,
+            slow_stop=self.slow_stop_on_trigger_release,
+        )
+        self._reset_interpolator(runtime.name)
+        with runtime.state_lock:
+            selected_mode = requested_hold_mode(
+                runtime.position_pressed,
+                runtime.orientation_pressed,
+            )
+            if selected_mode is not None:
+                runtime.enable_pending = True
+                runtime.pending_mode = selected_mode
+        if selected_mode is None:
+            self._request_converter(runtime.name, False)
+            return
+        self._request_converter(
+            runtime.name,
+            True,
+            lambda success, message: self._complete_trigger_enable(
+                runtime, selected_mode, success, message
+            ),
+        )
 
     def _request_trigger_disable(self, runtime: ArmRuntime, reason: str) -> None:
         with runtime.state_lock:
