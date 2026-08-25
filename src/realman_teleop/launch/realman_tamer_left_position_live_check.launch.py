@@ -76,7 +76,7 @@ def generate_launch_description():
                         "max_linear_acceleration_mps2": 1.2,
                         "max_angular_velocity_radps": 0.5,
                         "max_angular_acceleration_radps2": 4.0,
-                        "watchdog_seconds": 0.15,
+                        "watchdog_seconds": 0.35,
                         "trigger_control_enabled": True,
                         "trigger_mode": "hold",
                         "slow_stop_on_trigger_release": True,

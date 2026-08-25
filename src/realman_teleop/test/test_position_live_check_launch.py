@@ -34,5 +34,5 @@ def test_position_live_check_matches_verified_patent_canfd_parameters():
     assert '"pose_acceleration_limit_enabled": True' in LAUNCH_SOURCE
     assert '"max_linear_velocity_mps": 0.15' in LAUNCH_SOURCE
     assert '"max_linear_acceleration_mps2": 1.2' in LAUNCH_SOURCE
-    assert '"watchdog_seconds": 0.15' in LAUNCH_SOURCE
+    assert '"watchdog_seconds": 0.35' in LAUNCH_SOURCE
     assert 'DeclareLaunchArgument("live_confirmation", default_value="")' in LAUNCH_SOURCE

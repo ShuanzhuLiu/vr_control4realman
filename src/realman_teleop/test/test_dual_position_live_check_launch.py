@@ -37,4 +37,5 @@ def test_dual_live_check_copies_verified_acceleration_limited_canfd_path():
     assert '"max_linear_acceleration_mps2": 1.2' in LAUNCH_SOURCE
     assert '"position_mapping_scale": 0.40' in LAUNCH_SOURCE
     assert '"rotation_mapping_scale": 0.05' in LAUNCH_SOURCE
+    assert '"watchdog_seconds": 0.35' in LAUNCH_SOURCE
     assert '"slow_stop_on_trigger_release": True' in LAUNCH_SOURCE
