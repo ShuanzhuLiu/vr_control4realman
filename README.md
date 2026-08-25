@@ -1,6 +1,6 @@
 # PICO + RealMan 双臂高跟随遥操作
 
-本仓库包含已在两台 RealMan RM65 和 PICO 手柄上验证的双臂末端位姿遥操作链路，以及三台 Intel RealSense D435 的 WebSocket-JPEG 视频服务。
+本仓库基于 OpenDriveLab/TAMEn 的 tAmeR PICO 遥操作链路，将原有机械臂后端替换为已在两台 RealMan RM65 上验证的双臂 CANFD 高跟随控制，并包含三台 Intel RealSense D435 的 WebSocket-JPEG 视频服务。
 
 控制链路：
 
@@ -30,10 +30,22 @@ PICO TCP 8018
 
 ```text
 camera_api/                  RealSense 视频 WebSocket 服务
+pico_app/                    tAmeR PICO APP 版本与本地安装说明（APK 不入库）
 src/realman_teleop/          当前实机使用的 RealMan CANFD、映射与安全核心
 src/vr_data_pub/             PICO TCP 8018 接收与 ROS 2 数据分发
 requirements-camera.txt      摄像头 Python 依赖
 ```
+
+## 上游来源
+
+本项目复用了 [OpenDriveLab/TAMEn](https://github.com/OpenDriveLab/TAMEn) 发布的 tAmeR PICO 应用、TCP 数据格式和 ROS 2 接收思路。主要改动包括：
+
+- 将 TAMEn 的 JAKA 控制后端替换为 RealMan API2 和 `movep_canfd` 高跟随控制；
+- 增加双臂独立坐标映射、水平朝向补偿、锚点保护、watchdog 和急停；
+- 增加三台 RealSense D435 的直接 WebSocket-JPEG 视频服务；
+- 为当前实验网络制作 tAmeR 视频端点修改版 APK。
+
+上游项目及其对象形式发布物采用 Apache License 2.0。本仓库的详细归属和修改声明见 [NOTICE](NOTICE)。使用本项目开展研究时，也请引用 TAMEn 原论文，引用信息见上游 README。
 
 ## 环境
 
@@ -107,6 +119,31 @@ ping -c 3 169.254.128.19
 ```
 
 PICO 和控制电脑使用同一 Wi-Fi。PICO APP 中的控制服务器地址应设置为控制电脑 Wi-Fi IP，端口为 `8018`。
+
+## 安装 PICO APP
+
+APK 文件较大且使用本地开发证书签名，因此不纳入 Git 仓库。当前实验使用的本地文件名为：
+
+```text
+pico_app/tAmeR_192.168.3.6_video_v2.apk
+```
+
+将 APK 单独放入上述路径后再执行安装。该 APK 是 TAMEn `tAmeR.apk` 的本地修改构建，视频 WebSocket 端点适配当前控制电脑 Wi-Fi 地址 `192.168.3.6:8765`。它不是 PICO 商店应用，也不是 OpenDriveLab 发布的原始签名版本。详细版本、签名和校验信息见 [pico_app/README.md](pico_app/README.md)。需要上游原版时，请从 [OpenDriveLab/TAMEn](https://github.com/OpenDriveLab/TAMEn) 获取。
+
+在已配置 ADB 的电脑上连接 PICO 后安装：
+
+```bash
+adb install -r pico_app/tAmeR_192.168.3.6_video_v2.apk
+```
+
+如果设备中已经安装了不同签名的 `com.TAMEn.tAmeR`，Android 会拒绝覆盖。确认不需要保留旧应用数据后执行：
+
+```bash
+adb uninstall com.TAMEn.tAmeR
+adb install pico_app/tAmeR_192.168.3.6_video_v2.apk
+```
+
+安装后，在 PICO APP 中将控制服务器设置为控制电脑 Wi-Fi IP，端口设置为 `8018`。如果控制电脑不再使用 `192.168.3.6`，当前修改版的视频地址也需要相应调整；也可改用 TAMEn 上游发布的原版 APK。
 
 ## 启动机械臂
 
@@ -250,7 +287,7 @@ ros2 topic hz /vr_raw_data
 
 ## SDK 与许可证
 
-项目代码采用 Apache-2.0 许可证，详见 `LICENSE`。
+项目代码采用 Apache-2.0 许可证，详见 `LICENSE`。本项目基于 TAMEn 修改，保留上游许可证并在 `NOTICE` 中列出来源和主要变更。
 
 本仓库不包含 RealMan 厂商 SDK 源码或二进制。请通过 `pip install Robotic_Arm` 或 [RealMan 官方 RM_API2 仓库](https://github.com/RealManRobot/RM_API2) 安装与当前操作系统和 CPU 架构匹配的版本。
 

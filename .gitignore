@@ -16,3 +16,6 @@ logs/
 # RealMan API2 is installed separately from the official distribution.
 src/realman_teleop/arm_api_new/
 *.so
+
+# Keep the locally signed PICO application out of Git history.
+pico_app/*.apk

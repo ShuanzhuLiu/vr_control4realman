@@ -1,0 +1,22 @@
+PICO + RealMan Dual-Arm Teleoperation
+
+This project includes and adapts components and design ideas from:
+
+  TAMEn: Tactile-Aware Manipulation Engine for Closed-Loop Data
+  Collection in Contact-Rich Tasks
+  https://github.com/OpenDriveLab/TAMEn
+
+TAMEn is distributed under the Apache License, Version 2.0. Its authors
+and contributors retain their respective copyright and attribution
+notices.
+
+Changes in this project include replacing the JAKA robot backend with a
+RealMan API2/CANFD dual-arm backend, adding RealMan-specific coordinate
+mapping and safety controls, and adding a direct three-camera RealSense
+WebSocket-JPEG service.
+
+The locally used tAmeR_192.168.3.6_video_v2.apk is a modified object-form
+build derived from the TAMEn tAmeR application. It was re-signed for local
+development and changes the video endpoint for the experiment network at
+192.168.3.6:8765. It is not an original OpenDriveLab-signed release and is
+not distributed in this Git repository.
